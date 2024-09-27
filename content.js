@@ -1,4 +1,5 @@
 let inputBox = null;
+let input = null;
 let apiKeySet = false;
 
 function createInputBox() {
@@ -15,14 +16,26 @@ function createInputBox() {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   `;
 
-    const input = document.createElement('input');
+    input = document.createElement('input');
     input.style.cssText = `
     width: 100%;
     padding: 10px;
     border: none;
     border-radius: 5px;
     font-size: 14px;
+    box-sizing: border-box;
   `;
+
+    // Load the stored position when the page loads
+    chrome.storage.sync.get(['chatPosition'], (result) => {
+        if (result.chatPosition) {
+            inputBox.style.position = 'fixed';
+            inputBox.style.top = result.chatPosition.top + 'px';
+            inputBox.style.left = result.chatPosition.left + 'px';
+            inputBox.style.bottom = 'auto';
+            inputBox.style.right = 'auto';
+        }
+    });
 
     chrome.storage.local.get(['CLAUDE_API_KEY'], (result) => {
         if (result.CLAUDE_API_KEY) {
@@ -47,6 +60,17 @@ function createInputBox() {
         startTop = inputBox.offsetTop;
     });
 
+    // Store the position when the chat field is moved
+    inputBox.addEventListener('mouseup', () => {
+        const rect = inputBox.getBoundingClientRect();
+        const position = {
+            top: rect.top,
+            left: rect.left
+        };
+
+        chrome.storage.sync.set({ chatPosition: position });
+    });
+
     document.addEventListener('mousemove', (e) => {
         if (isDragging) {
             const deltaX = e.clientX - dragStartX;
@@ -54,6 +78,7 @@ function createInputBox() {
             inputBox.style.left = `${startLeft + deltaX}px`;
             inputBox.style.top = `${startTop + deltaY}px`;
             inputBox.style.bottom = 'auto';
+            inputBox.style.right = 'auto';
         }
     });
 
@@ -74,6 +99,8 @@ function createInputBox() {
                 const interactiveElements = mapInteractiveElements();
                 const prompt = `Page context, each key is the element id of the element, each value is the element description\nElements: ${JSON.stringify(interactiveElements)}\nUser instruction: ${value}\nGiven the user instruction use the information about the page to write javascript code to perform the action using the code tool.`;
                 chrome.storage.local.get(['CLAUDE_API_KEY'], (result) => {
+                    input.placeholder = "Asking claude...";
+                    input.disabled = true;
                     chrome.runtime.sendMessage({
                         action: "sendToClaudeAndExecute",
                         apiKey: result.CLAUDE_API_KEY,
@@ -246,6 +273,9 @@ async function executeOperations(operations) {
                 console.warn(`Unknown action: ${operation.action}`);
         }
     }
+    input.disabled = false;
+    input.placeholder = "Control the web page...";
+    input.focus();
 }
 
 // Helper function to simulate typing text
