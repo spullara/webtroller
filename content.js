@@ -3,6 +3,7 @@
 let inputBox = null;
 let input = null;
 let apiKeySet = false;
+let elements = null;
 
 function createInputBox() {
     inputBox = document.createElement('div');
@@ -100,6 +101,7 @@ function createInputBox() {
                 });
             } else if (apiKeySet) {
                 const interactiveElements = mapInteractiveElements();
+                elements = interactiveElements;
                 const prompt = `Page context, each key is the element id of the element, each value is the element description\nElements: ${JSON.stringify(interactiveElements)}\nUser instruction: ${value}\nGiven the user instruction use the information about the page to write javascript code to perform the action using the code tool.`;
                 chrome.storage.local.get(['CLAUDE_API_KEY'], (result) => {
                     input.placeholder = "Asking claude...";
@@ -139,12 +141,23 @@ function createInputBox() {
 function mapInteractiveElements() {
     let idCounter = 0;
     const elementMap = new Map();
+    const names = new Map();
+
+    if (elements) {
+        // Remove all generated ids
+        for (let element of Object.values(elements)) {
+            if (element.id && element.id.startsWith('webtroller-id-')) {
+                element.removeAttribute('id');
+            }
+        }
+        return elements;
+    }
 
     function generateUniqueId(element) {
         if (element.id) {
             return element.id;
         }
-        const newId = `generated-id-${idCounter++}`;
+        const newId = `webtroller-id-${idCounter++}`;
         element.id = newId;
         return newId;
     }
@@ -246,13 +259,21 @@ function mapInteractiveElements() {
     }
 
     function processElement(element) {
+        if (inputBox && (element === inputBox || element === input)) return;
+        const children = Array.from(element.children).flatMap(processElement);
+        if (children.length > 0) return [];
+        const added = [];
         if (isInteractiveElement(element)) {
-            const id = generateUniqueId(element);
             const description = describeElement(element);
-            elementMap.set(id, description);
+            let name = description.name;
+            if (name !== '' && !names.has(name)) {
+                names.set(name, element);
+                const id = generateUniqueId(element);
+                elementMap.set(id, description);
+                added.push(id);
+            }
         }
-
-        Array.from(element.children).forEach(processElement);
+        return added;
     }
 
     processElement(document.body);
@@ -262,17 +283,28 @@ function mapInteractiveElements() {
 chrome.runtime.onMessage.addListener((request) => {
     if (request.action === "executeCode") {
         // noinspection JSIgnoredPromiseFromCall
-        executeOperations(request.operations);
+        executeOperations(request.input);
     } else if (request.action === "executeError") {
         console.error('Error from Claude:', request.error);
     }
 });
 
-async function executeOperations(operations) {
-    for (let operation of operations) {
-        const element = document.getElementById(operation.elementId);
+async function executeOperations(toolInput) {
+    console.log("Executing code:", JSON.stringify(toolInput, null, 2));
+    for (let operation of toolInput.operations) {
+        let element = document.getElementById(operation.elementId);
+        const seenElement = elements[operation.elementId];
+        console.log(JSON.stringify(seenElement, null, 2));
 
         if (!element) {
+            // Attempt to find it by name by remapping elements this can happen with dynamic changes
+            elements = mapInteractiveElements();
+            for (let [id, description] of Object.entries(elements)) {
+                if (description.name === seenElement.name) {
+                    element = document.getElementById(id);
+                    break;
+                }
+            }
             console.warn(`Element not found for ID: ${operation.elementId}`);
             continue;
         }
@@ -298,7 +330,6 @@ async function executeOperations(operations) {
     }
     input.disabled = false;
     input.placeholder = "Control the web page...";
-    // Hide it
     inputBox.style.display = 'none';
 }
 

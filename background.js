@@ -38,6 +38,10 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
                     "description": "This tool will automate web page interactions by performing a series of operations such as focusing, clicking, or typing into elements identified by their specific element IDs.\n\nExample:\nGiven a web page, apply the following operations:\n1. Focus: {\"action\": \"focus\", \"elementId\": \"username\"}\n2. Type: {\"action\": \"type\", \"elementId\": \"username\", \"text\": \"john_doe\"}\n3. Click: {\"action\": \"click\", \"elementId\": \"submit-button\"}\n\nAfter applying these operations, the page will have focused on the username field, typed 'john_doe', and clicked the submit button.",
                     "input_schema": {
                         "properties": {
+                            "plan": {
+                                "description": "what is the plan for the series of operations",
+                                "type": "string"
+                            },
                             "operations": {
                                 "description": "List of operations to perform",
                                 "items": {
@@ -80,9 +84,8 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
             const content = data.content[0];
             if (content.type === "tool_use") {
                 const input = content.input;
-                const operations = input.operations;
-                console.log("Executing code:", JSON.stringify(operations));
-                chrome.tabs.sendMessage(tabId, {action: "executeCode", operations: operations});
+                console.log("Executing code:", JSON.stringify(input));
+                chrome.tabs.sendMessage(tabId, {action: "executeCode", input: input});
             }
         })
         .catch(error => console.error('Error:', error));
