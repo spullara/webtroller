@@ -77,7 +77,6 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
     })
         .then(response => response.json())
         .then(data => {
-            console.log("Received response from Claude:", JSON.stringify(data));
             const content = data.content[0];
             if (content.type === "tool_use") {
                 const input = content.input;

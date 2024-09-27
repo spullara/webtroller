@@ -7,6 +7,7 @@ let apiKeySet = false;
 function createInputBox() {
     inputBox = document.createElement('div');
     inputBox.style.cssText = `
+    display: none;
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -70,7 +71,7 @@ function createInputBox() {
             left: rect.left
         };
 
-        chrome.storage.sync.set({ chatPosition: position });
+        chrome.storage.sync.set({chatPosition: position});
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -112,6 +113,24 @@ function createInputBox() {
                 });
             } else {
                 alert('Please set your Claude API key first.');
+            }
+        }
+    });
+
+    // Add an event listener for keydown to detect Command-K (or Ctrl-K on non-Mac)
+    document.addEventListener('keydown', (e) => {
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+        // Check for Command-K on Mac or Ctrl-K on non-Mac systems
+        if ((e.key === 'k' || e.key === 'K') && (isMac ? e.metaKey : e.ctrlKey)) {
+            e.preventDefault(); // Prevent the default browser action for Command-K/Ctrl-K
+
+            // Toggle visibility of chatField
+            if (inputBox.style.display === 'none' || inputBox.style.display === '') {
+                inputBox.style.display = 'block';  // Un-hide the chat field
+                input.focus();                  // Focus on the input field when unhidden
+            } else {
+                inputBox.style.display = 'none';   // Hide the chat field
             }
         }
     });
@@ -269,6 +288,7 @@ async function executeOperations(operations) {
 
             case 'type':
                 element.focus(); // Ensure the element is focused before typing
+                element.value = ''; // Clear the element's value before typing
                 await typeText(element, operation.text);
                 break;
 
@@ -278,7 +298,8 @@ async function executeOperations(operations) {
     }
     input.disabled = false;
     input.placeholder = "Control the web page...";
-    input.focus();
+    // Hide it
+    inputBox.style.display = 'none';
 }
 
 // Helper function to simulate typing text
@@ -288,7 +309,7 @@ function typeText(element, text) {
 
         function typeCharacter() {
             if (index < text.length) {
-                const event = new Event('input', { bubbles: true });
+                const event = new Event('input', {bubbles: true});
                 element.value += text[index++];
                 element.dispatchEvent(event);
                 setTimeout(typeCharacter, 100); // Simulate typing delay
