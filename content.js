@@ -1,3 +1,5 @@
+// noinspection JSUnresolvedReference,JSDeprecatedSymbols
+
 let inputBox = null;
 let input = null;
 let apiKeySet = false;
@@ -238,8 +240,9 @@ function mapInteractiveElements() {
     return Object.fromEntries(elementMap);
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request) => {
     if (request.action === "executeCode") {
+        // noinspection JSIgnoredPromiseFromCall
         executeOperations(request.operations);
     } else if (request.action === "executeError") {
         console.error('Error from Claude:', request.error);

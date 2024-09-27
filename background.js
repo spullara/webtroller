@@ -1,5 +1,9 @@
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// noinspection JSDeprecatedSymbols,JSUnresolvedReference,JSCheckFunctionSignatures
+// noinspection JSUnresolvedReference
+
+chrome.runtime.onMessage.addListener((request, sender) => {
     if (request.action === "sendToClaudeAndExecute") {
+        // noinspection JSIgnoredPromiseFromCall,JSUnresolvedReference
         sendToClaudeAndExecute(request.apiKey, request.prompt, sender.tab.id);
     }
     return true;  // Indicates we will respond asynchronously
@@ -9,10 +13,10 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
     return fetch("https://claude.gpt.vc:8443/v1/messages", {
         method: "POST",
         headers: {
-            "Content-Type": "application/json",
+            "content-type": "application/json",
             "x-api-key": apiKey,
             "x-anthropic-version": "2023-06-01",
-            "anthropic-dangerous-direct-browser-access": true
+            "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
             model: "claude-3-5-sonnet-20240620",
