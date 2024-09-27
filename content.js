@@ -139,7 +139,6 @@ function createInputBox() {
 }
 
 function mapInteractiveElements() {
-    let idCounter = 0;
     const elementMap = new Map();
     const names = new Map();
 
@@ -151,15 +150,6 @@ function mapInteractiveElements() {
             }
         }
         return elements;
-    }
-
-    function generateUniqueId(element) {
-        if (element.id) {
-            return element.id;
-        }
-        const newId = `webtroller-id-${idCounter++}`;
-        element.id = newId;
-        return newId;
     }
 
     function getAccessibleName(element) {
@@ -258,6 +248,20 @@ function mapInteractiveElements() {
         };
     }
 
+    function generateUniqueId(element, description) {
+        if (element.id) {
+            return element.id;
+        }
+        const hash = Array.from(JSON.stringify(description))
+            .reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0)
+            .toString(16)
+            .slice(-8)
+            .padStart(8, '0');
+        const newId = `webtroller-id-${hash}`;
+        element.id = newId;
+        return newId;
+    }
+
     function processElement(element) {
         if (inputBox && (element === inputBox || element === input)) return;
         const children = Array.from(element.children).flatMap(processElement);
@@ -268,7 +272,7 @@ function mapInteractiveElements() {
             let name = description.name;
             if (name !== '' && !names.has(name)) {
                 names.set(name, element);
-                const id = generateUniqueId(element);
+                const id = generateUniqueId(element, description);
                 elementMap.set(id, description);
                 added.push(id);
             }
@@ -297,16 +301,14 @@ async function executeOperations(toolInput) {
         console.log(JSON.stringify(seenElement, null, 2));
 
         if (!element) {
-            // Attempt to find it by name by remapping elements this can happen with dynamic changes
+            // If it wasn't found assume that the page has changed and dropped our ids, regenerate them
+            // Since they are content addressable we will find them if they are still there
             elements = mapInteractiveElements();
-            for (let [id, description] of Object.entries(elements)) {
-                if (description.name === seenElement.name) {
-                    element = document.getElementById(id);
-                    break;
-                }
+            element = document.getElementById(operation.elementId);
+            if (!element) {
+                console.warn(`Element not found for ID: ${operation.elementId}`);
+                continue;
             }
-            console.warn(`Element not found for ID: ${operation.elementId}`);
-            continue;
         }
 
         switch (operation.action) {
