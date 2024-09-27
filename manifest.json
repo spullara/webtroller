@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Web Controller",
+  "version": "1.0",
+  "description": "Control web pages using Claude AI",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
