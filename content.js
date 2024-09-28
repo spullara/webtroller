@@ -297,8 +297,7 @@ async function executeOperations(toolInput) {
     console.log("Executing code:", JSON.stringify(toolInput, null, 2));
     for (let operation of toolInput.operations) {
         let element = document.getElementById(operation.elementId);
-        const seenElement = elements[operation.elementId];
-        console.log(JSON.stringify(seenElement, null, 2));
+        console.log(JSON.stringify(elements[operation.elementId], null, 2));
 
         if (!element) {
             // If it wasn't found assume that the page has changed and dropped our ids, regenerate them
