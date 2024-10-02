@@ -1,6 +1,8 @@
 // noinspection JSDeprecatedSymbols,JSUnresolvedReference,JSCheckFunctionSignatures
 // noinspection JSUnresolvedReference
 
+const POST = "POST";
+
 chrome.runtime.onMessage.addListener((request, sender) => {
     if (request.action === "sendToClaudeAndExecute") {
         // noinspection JSIgnoredPromiseFromCall,JSUnresolvedReference
@@ -11,7 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender) => {
 
 async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
     return fetch("https://claude.gpt.vc:8443/v1/messages", {
-        method: "POST",
+        method: POST,
         headers: {
             "content-type": "application/json",
             "x-api-key": apiKey,
@@ -47,7 +49,7 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
                                 "items": {
                                     "properties": {
                                         "action": {
-                                            "description": "The type of operation to perform: 'focus', 'click', or 'type'.",
+                                            "description": "The type of operation to perform: 'focus', 'click', or 'type'. Only use 'type' on elements where the 'typeable' property is true.",
                                             "type": "string"
                                         },
                                         "elementId": {
@@ -56,6 +58,10 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
                                         },
                                         "text": {
                                             "description": "The text to type into the element (used only for 'type' actions).",
+                                            "type": "string"
+                                        },
+                                        "error": {
+                                            "description": "If you can't find an element for the instruction use this to describe what you were looking for",
                                             "type": "string"
                                         }
                                     },

@@ -102,7 +102,8 @@ function createInputBox() {
             } else if (apiKeySet) {
                 const interactiveElements = mapInteractiveElements();
                 elements = interactiveElements;
-                const prompt = `Page context, each key is the element id of the element, each value is the element description\nElements: ${JSON.stringify(interactiveElements)}\nUser instruction: ${value}\nGiven the user instruction use the information about the page to write javascript code to perform the action using the code tool.`;
+                const promptElements = JSON.stringify(interactiveElements, null, 2);
+                const prompt = `Page context, each key is the element id of the element, each value is the element description\nElements: ${promptElements}\nUser instruction: ${value}\nGiven the user instruction use the information about the page to write javascript code to perform the action using the code tool.`;
                 chrome.storage.local.get(['CLAUDE_API_KEY'], (result) => {
                     input.placeholder = "Asking claude...";
                     input.disabled = true;
@@ -149,17 +150,45 @@ function mapInteractiveElements() {
                 element.removeAttribute('id');
             }
         }
-        return elements;
     }
 
     function getAccessibleName(element) {
-        const nameParts = [
-            element.getAttribute('aria-label'),
+        const nameParts = [];
+
+        // Check for aria-label
+        const ariaLabel = element.getAttribute('aria-label');
+        if (ariaLabel) {
+            nameParts.push(ariaLabel);
+        }
+
+        // Check for aria-labelledby
+        const ariaLabelledBy = element.getAttribute('aria-labelledby');
+        if (ariaLabelledBy) {
+            const labelledByElement = document.getElementById(ariaLabelledBy);
+            if (labelledByElement) {
+                nameParts.push(labelledByElement.textContent.trim());
+            }
+        }
+
+        // Check for associated label
+        if (element.id) {
+            const associatedLabel = document.querySelector(`label[for="${element.id}"]`);
+            if (associatedLabel) {
+                nameParts.push(associatedLabel.textContent.trim());
+            }
+        }
+
+        // Check for placeholder
+        if (element.placeholder) {
+            nameParts.push(element.placeholder);
+        }
+
+        // Existing checks
+        nameParts.push(
             element.getAttribute('alt'),
             element.getAttribute('title'),
-            element.value,
-            element.placeholder
-        ];
+            element.value
+        );
 
         if (element.offsetParent !== null) {
             const textContent = Array.from(element.childNodes)
@@ -169,6 +198,7 @@ function mapInteractiveElements() {
             nameParts.push(textContent);
         }
 
+        // Check for labels (for inputs within label elements)
         if (element.labels && element.labels.length > 0) {
             nameParts.push(element.labels[0].textContent.trim());
         }
@@ -225,9 +255,19 @@ function mapInteractiveElements() {
             value: element.value || undefined,
             checked: element.checked !== undefined ? element.checked : undefined,
             disabled: element.disabled || undefined,
-            required: element.required || undefined
+            required: element.required || undefined,
+            typeable: isTypableElement(element)
         };
         return Object.fromEntries(Object.entries(details).filter(([_, v]) => v !== undefined));
+    }
+
+    function isTypableElement(element) {
+        const typableTypes = ['text', 'password', 'email', 'number', 'search', 'tel', 'url'];
+        return (
+            (element.tagName.toLowerCase() === 'input' && typableTypes.includes(element.type.toLowerCase())) ||
+            element.tagName.toLowerCase() === 'textarea' ||
+            element.isContentEditable
+        );
     }
 
     function describeElement(element) {
@@ -297,13 +337,15 @@ async function executeOperations(toolInput) {
     console.log("Executing code:", JSON.stringify(toolInput, null, 2));
     for (let operation of toolInput.operations) {
         let element = document.getElementById(operation.elementId);
-        console.log(JSON.stringify(elements[operation.elementId], null, 2));
+        let elementDetails = elements[operation.elementId];
+        console.log(JSON.stringify(elementDetails, null, 2));
 
         if (!element) {
             // If it wasn't found assume that the page has changed and dropped our ids, regenerate them
             // Since they are content addressable we will find them if they are still there
             elements = mapInteractiveElements();
             element = document.getElementById(operation.elementId);
+            elementDetails = elements[operation.elementId];
             if (!element) {
                 console.warn(`Element not found for ID: ${operation.elementId}`);
                 continue;
@@ -320,11 +362,17 @@ async function executeOperations(toolInput) {
                 break;
 
             case 'type':
-                element.focus(); // Ensure the element is focused before typing
-                element.value = ''; // Clear the element's value before typing
-                await typeText(element, operation.text);
+                if (elementDetails.details && elementDetails.details.typeable) {
+                    element.focus(); // Ensure the element is focused before typing
+                    element.value = ''; // Clear the element's value before typing
+                    await typeText(element, operation.text);
+                } else {
+                    console.warn(`Cannot type into element with ID: ${operation.elementId}. It's not a typeable element.`);
+                }
                 break;
-
+            case 'error':
+                input.placeholder = "${operation.error}";
+                break;
             default:
                 console.warn(`Unknown action: ${operation.action}`);
         }
