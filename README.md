@@ -23,7 +23,7 @@ Claude Web Controller is a Chrome extension that allows you to control web pages
 
 ## Usage
 
-1. After installation, you'll see a small input box in the bottom right corner of your web pages.
+1. After installation, and you press command-k, you'll see a small input box in the bottom right corner of your web pages.
 2. If you haven't set your Claude API key, enter it when prompted.
 3. Once the API key is set, you can enter natural language commands to control the web page.
 4. Use Command-K (or Ctrl-K on non-Mac systems) to toggle the visibility of the input box.
