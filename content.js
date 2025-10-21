@@ -382,22 +382,124 @@ async function executeOperations(toolInput) {
     inputBox.style.display = 'none';
 }
 
-// Helper function to simulate typing text
 function typeText(element, text) {
     return new Promise((resolve) => {
         let index = 0;
+        let currentValue = element.value || '';
+
+        function triggerKeyboardEvent(type, char, keyCode) {
+            const eventInit = {
+                key: char,
+                code: char.length === 1 ? 'Key' + char.toUpperCase() : char,
+                keyCode: keyCode,
+                which: keyCode,
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                charCode: type === 'keypress' ? keyCode : 0,
+                location: 0,
+                repeat: false,
+                isComposing: false,
+                // Add these properties to better simulate a real keyboard event
+                isTrusted: true,
+                detail: 0,
+                view: window
+            };
+
+            const event = new KeyboardEvent(type, eventInit);
+            
+            // Override preventDefault to ensure the event isn't blocked
+            Object.defineProperty(event, 'preventDefault', {
+                value: () => {},
+                writable: false
+            });
+
+            element.dispatchEvent(event);
+        }
+
+        function triggerInputEvent(char) {
+            // Trigger beforeinput event
+            const beforeInputEvent = new InputEvent('beforeinput', {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                inputType: 'insertText',
+                data: char,
+                isComposing: false
+            });
+            element.dispatchEvent(beforeInputEvent);
+
+            // Update value
+            currentValue += char;
+            element.value = currentValue;
+
+            // Trigger input event
+            const inputEvent = new InputEvent('input', {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                inputType: 'insertText',
+                data: char,
+                isComposing: false
+            });
+            element.dispatchEvent(inputEvent);
+
+            // Trigger change event
+            const changeEvent = new Event('change', {
+                bubbles: true,
+                cancelable: true
+            });
+            element.dispatchEvent(changeEvent);
+        }
+
+        function triggerCompositionEvent(type, char) {
+            const event = new CompositionEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                data: char
+            });
+            element.dispatchEvent(event);
+        }
 
         function typeCharacter() {
             if (index < text.length) {
-                const event = new Event('input', {bubbles: true});
-                element.value += text[index++];
-                element.dispatchEvent(event);
-                setTimeout(typeCharacter, 100); // Simulate typing delay
+                const char = text[index];
+                const keyCode = char.charCodeAt(0);
+
+                // Focus the element first
+                element.focus();
+
+                // Trigger composition start if needed
+                if (index === 0) {
+                    triggerCompositionEvent('compositionstart', char);
+                }
+
+                // Trigger the sequence of events
+                triggerKeyboardEvent('keydown', char, keyCode);
+                triggerKeyboardEvent('keypress', char, keyCode);
+                triggerInputEvent(char);
+                triggerKeyboardEvent('keyup', char, keyCode);
+
+                // Trigger composition end if this is the last character
+                if (index === text.length - 1) {
+                    triggerCompositionEvent('compositionend', char);
+                }
+
+                index++;
+                setTimeout(typeCharacter, 100); // Maintain the typing delay
             } else {
+                // Trigger final blur event
+                element.dispatchEvent(new Event('blur', {
+                    bubbles: true,
+                    cancelable: true
+                }));
                 resolve();
             }
         }
 
+        // Start by focusing the element
+        element.focus();
         typeCharacter();
     });
 }

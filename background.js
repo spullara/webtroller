@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender) => {
 });
 
 async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
-    return fetch("https://claude.gpt.vc:8443/v1/messages", {
+    return fetch("https://claude.gpt.vc/v1/messages", {
         method: POST,
         headers: {
             "content-type": "application/json",
@@ -21,7 +21,7 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
             "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
-            model: "claude-3-5-sonnet-20240620",
+            model: "claude-sonnet-4-20250514",
             messages: [
                 {
                     "content": [
