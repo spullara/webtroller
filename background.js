@@ -18,6 +18,7 @@ async function sendToClaudeAndExecute(apiKey, prompt, tabId) {
             "content-type": "application/json",
             "x-api-key": apiKey,
             "x-anthropic-version": "2023-06-01",
+            "anthropic-version": "2023-06-01",
             "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({

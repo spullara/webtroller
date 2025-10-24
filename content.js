@@ -21,6 +21,7 @@ function createInputBox() {
   `;
 
     input = document.createElement('input');
+    input.id="webtroller-input";
     input.style.cssText = `
     width: 100%;
     padding: 10px;
